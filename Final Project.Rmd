@@ -1,0 +1,902 @@
+---
+title: "Final Project 714"
+author: "Bridget_Chukwu"
+date: "July 30, 2024"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exploring the pattern of macroeconomic variables on different North American countries through interactive Data Visualization
+
+#### Data cleaning and preprocessing to handle missing values, outliers, and inconsistencies
+```{r}
+
+library(readxl)
+getwd()
+data<-read_excel("C:\\Users\\bridget.chukwu\\Documents\\Summer Course STAT\\STAT 714\\Final Project_714\\MacroVariables Data.xls")
+head(data)
+dim(data) # List the names of columns in the dataset
+```
+
+### Cleaning the data 
+```{r}
+# Remove unneeded columns and columns with zero values from data dataset
+data <- data[, !(names(data) %in% c("Time" , "Entity", "lnGDP", "lnGovEx", "lnInf", "lnInt", "lnTax", "lnUnem", "CAN", "CRI", "DOM", "HND", "MEX", "PAN"))]
+head(data)
+dim(data)
+colnames(data)
+###missing value
+sum(is.na(data)) # input the formula to detect any missing value
+#no missing value found
+
+### 
+
+```
+
+ 
+### Outliers detection
+
+```{r}
+# Standardize the numeric columns to z-scores
+z_scores <- apply(data[, sapply(data, is.numeric)], 2, function(x) (x - mean(x)) / sd(x))
+
+# Identify rows with any z-score greater than 3 (considered outliers)
+outlier_rows <- apply(z_scores, 1, function(row) any(abs(row) > 3))
+
+# Create a dataset without the outliers
+cleaned_data <- data[!outlier_rows, ]
+
+# Ensure at least one record per country remains
+country_column <- "countrycode"  
+unique_countries <- unique(data[[country_column]])
+
+# Loop over countries to check if they are represented
+for (country in unique_countries) {
+  if (!country %in% cleaned_data[[country_column]]) {
+    # If a country is not present in the cleaned data, retain one row from the original data
+    row_to_keep <- My_data[My_data[[country_column]] == country, ][1, ]
+    cleaned_data <- rbind(cleaned_data, row_to_keep)
+  }
+}
+
+# Check the remaining dimension after removing outliers
+dim(cleaned_data)
+
+# Optionally, reassign cleaned data to original variable
+final_data <- cleaned_data
+
+
+
+```
+
+### Data visualization - Scatter Plot
+
+## Box Plot
+```{r}
+library(plotly)
+library(ggplot2)
+# Data visualization - 
+boxplot(final_data$`Unem`, ylab = "Unem") #create boxplot for Unmeployment
+out_Un<- boxplot.stats(final_data$`Unem`)$out # show the statistics from the boxplot and detect the outliers in the dataset
+outUn_ind<- which(final_data$`Unem` %in% c(out_Un)) #create a variable outUn_ind with the detected outliers
+outUn_ind
+boxplot(final_data$`Unem`, ylab = "Unem", main = "Unem")#create a boxplot
+mtext(paste("outliers: ", paste(out_Un, collapse = ", "))) #show the outliers value on the boxplot
+```
+
+```{r}
+library(plotly)
+library(ggplot2)
+
+# Data visualization - Boxplot for Tax
+boxplot(final_data$`Tax`, ylab = "Tax") # Create boxplot for Tax
+out_Tax <- boxplot.stats(final_data$`Tax`)$out # Detect the outliers in the dataset
+outTax_ind <- which(final_data$`Tax` %in% c(out_Tax)) # Create a variable outTax_ind with the detected outliers
+outTax_ind
+
+boxplot(final_data$`Tax`, ylab = "Tax", main = "Tax") # Create a boxplot for Tax
+mtext(paste("outliers: ", paste(out_Tax, collapse = ", "))) # Show the outliers value on the boxplot
+
+```
+
+
+```{r}
+library(plotly)
+library(ggplot2)
+
+# Data visualization - Boxplot for Inf
+boxplot(final_data$`Inf`, ylab = "Inf") # Create boxplot for Inf
+out_Inf <- boxplot.stats(final_data$`Inf`)$out # Detect the outliers in the dataset
+outInf_ind <- which(final_data$`Inf` %in% c(out_Inf)) # Create a variable outInf_ind with the detected outliers
+outInf_ind
+
+boxplot(final_data$`Inf`, ylab = "Inf", main = "Inf") # Create a boxplot for Inf
+mtext(paste("outliers: ", paste(out_Inf, collapse = ", "))) # Show the outliers value on the boxplot
+
+```
+
+```{r}
+library(plotly)
+library(ggplot2)
+
+# Data visualization - Boxplot for GDP
+boxplot(final_data$`GDP`, ylab = "GDP") # Create boxplot for GDP
+out_GDP <- boxplot.stats(final_data$`GDP`)$out # Detect the outliers in the dataset
+outGDP_ind <- which(final_data$`GDP` %in% c(out_GDP)) # Create a variable outGDP_ind with the detected outliers
+outGDP_ind
+
+boxplot(final_data$`GDP`, ylab = "GDP", main = "GDP") # Create a boxplot for GDP
+mtext(paste("outliers: ", paste(out_GDP, collapse = ", "))) # Show the outliers value on the boxplot
+
+```
+
+```{r}
+# Data visualization - GDP by Country
+gdp_comparison <- final_data %>%
+  plot_ly(x = ~countrycode, y = ~GDP, color = ~countrycode, type = "box") %>%
+  layout(title = "GDP per capita Comparison by Country",
+         xaxis = list(title = "Country"),
+         yaxis = list(title = "GDP"),
+         showlegend = FALSE)
+
+gdp_comparison
+
+```
+
+
+```{r}
+# Function to identify outlier indices based on IQR
+outlier_indices <- function(x) {
+  Q1 <- quantile(x, 0.25, na.rm = TRUE)
+  Q3 <- quantile(x, 0.75, na.rm = TRUE)
+  IQR <- Q3 - Q1
+  which(x < (Q1 - 1.5 * IQR) | x > (Q3 + 1.5 * IQR))
+}
+
+# Find outlier indices for each variable
+outliers_int <- outlier_indices(final_data$Int)
+outliers_gdp <- outlier_indices(final_data$GDP)
+outliers_tax <- outlier_indices(final_data$Tax)
+outliers_unem <- outlier_indices(final_data$Unem)
+
+# Combine all outlier indices and remove duplicates
+all_outliers <- unique(c(outliers_int, outliers_gdp, outliers_tax, outliers_unem))
+
+# Remove rows with outliers from the dataset
+final_data_clean <- final_data[-all_outliers, ]
+
+# Plotting box plots using the cleaned data
+boxplot(final_data_clean$Int, main = "Interest Rate (Cleaned)", ylab = "Interest Rate")
+boxplot(final_data_clean$GDP, main = "GDP (Cleaned)", ylab = "GDP")
+boxplot(final_data_clean$Tax, main = "Tax (Cleaned)", ylab = "Tax")
+boxplot(final_data_clean$Unem, main = "Unemployment (Cleaned)", ylab = "Unemployment")
+
+
+```
+
+```{r}
+# Data visualization - Int (Interest) by Country
+int_comparison <- final_data %>%
+  plot_ly(x = ~countrycode, y = ~Int, color = ~countrycode, type = "box") %>%
+  layout(title = "Interest rate Comparison by Country",
+         xaxis = list(title = "Country"),
+         yaxis = list(title = "Interest Rate"),
+         showlegend = FALSE)
+
+int_comparison
+
+# Data visualization - Unem (Unemployment) by Country
+unem_comparison <- final_data %>%
+  plot_ly(x = ~countrycode, y = ~Unem, color = ~countrycode, type = "box") %>%
+  layout(title = "Unemployment rate Comparison by Country",
+         xaxis = list(title = "Country"),
+         yaxis = list(title = "Unemployment Rate"),
+         showlegend = FALSE)
+
+unem_comparison
+
+# Data visualization - Tax rate by Country
+tax_comparison <- final_data %>%
+  plot_ly(x = ~countrycode, y = ~Tax, color = ~countrycode, type = "box") %>%
+  layout(title = "Tax Comparison by Country",
+         xaxis = list(title = "Country"),
+         yaxis = list(title = "Tax"),
+         showlegend = FALSE)
+
+tax_comparison
+
+```
+
+
+
+## Bar Chart
+#### Visualisation of the Aggregate of different variables by countries from 2004 - 2022
+```{r}
+library(plotly)
+library(dplyr)
+
+# Calculate the sum of Interest rate for each country
+sum1 <- aggregate(Int ~ countrycode, data = final_data, FUN = sum)
+
+# Sort the data by the sum of Int value in descending order
+top_7_coun <- head(sum1[order(-sum1$Int), ], 7)
+
+# Convert Int to factor to ensure the x-axis is discrete for bar chart
+top_7_coun$countrycode <- factor(top_7_coun$countrycode)
+
+fig1 <- plot_ly(data = top_7_coun, x = ~countrycode, y = ~Int,
+                text = ~Int, textfont = list(color = 'rgb(101, 67, 33)'), textposition = 'inside', 
+                type = "bar", marker = list(color = 'rgb(225, 253, 208)', 
+                                            line = list(color = 'rgb(101, 67, 33)', 
+                                                        width = 2))) %>%
+   layout(title = "<b>Aggregated Interest rate values by Countries</b>",
+         plot_bgcolor = 'white',
+         xaxis = list(title = "<b>Countries</b>",
+           zerolinecolor = 'ffff',
+           zerolinewidth = 2,
+           gridcolor = 'ffff'),
+         yaxis = list(title = "<b>Agg.Int</b>",
+           zerolinecolor = '#CD6600',
+           zerolinewidth = 2,
+           gridcolor = 'ffff'))
+
+fig1
+
+```
+
+
+```{r}
+library(plotly)
+library(dplyr)
+
+# Calculate the sum of Unemployment for each country
+sum1 <- aggregate(Unem ~ countrycode, data = final_data, FUN = sum)
+
+# Sort the data by the sum of  Unemployment  in descending order
+top_7_coun <- head(sum1[order(-sum1$Unem), ], 7)
+
+# Convert  Unemployment to factor to ensure the x-axis is discrete for bar chart
+top_7_coun$countrycode <- factor(top_7_coun$countrycode)
+
+fig1 <- plot_ly(data = top_7_coun, x = ~countrycode, y = ~Unem,
+                text = ~Unem, textfont = list(color = 'rgb(101, 67, 33)'), textposition = 'inside', 
+                type = "bar", marker = list(color = 'rgb(225, 253, 208)', 
+                                            line = list(color = 'rgb(101, 67, 33)', 
+                                                        width = 2))) %>%
+   layout(title = "<b>Aggregated Unemployment values by Countries</b>",
+         plot_bgcolor = 'white',
+         xaxis = list(title = "<b>Countries</b>",
+           zerolinecolor = 'ffff',
+           zerolinewidth = 2,
+           gridcolor = 'ffff'),
+         yaxis = list(title = "<b>Agg.Unem</b>",
+           zerolinecolor = '#CD6600',
+           zerolinewidth = 2,
+           gridcolor = 'ffff'))
+
+fig1
+```
+
+```{r}
+
+# Calculate the sum of Tax for each country
+sum1 <- aggregate(Tax ~ countrycode, data = final_data, FUN = sum)
+
+# Sort the data by the sum of Tax in descending order
+top_7_coun <- head(sum1[order(-sum1$Tax), ], 7)
+
+# Convert countrycode to factor to ensure the x-axis is discrete for the bar chart
+top_7_coun$countrycode <- factor(top_7_coun$countrycode)
+
+# Plot the data using plotly
+fig1 <- plot_ly(data = top_7_coun, x = ~countrycode, y = ~Tax,
+                text = ~Tax, textfont = list(color = 'rgb(101, 67, 33)'), textposition = 'inside', 
+                type = "bar", marker = list(color = 'rgb(225, 253, 208)', 
+                                            line = list(color = 'rgb(101, 67, 33)', 
+                                                        width = 2))) %>%
+   layout(title = "<b>Aggregated Tax  by Countries</b>",
+         plot_bgcolor = 'white',
+         xaxis = list(title = "<b>Countries</b>",
+           zerolinecolor = 'ffff',
+           zerolinewidth = 2,
+           gridcolor = 'ffff'),
+         yaxis = list(title = "<b>Agg.Tax</b>",
+           zerolinecolor = '#CD6600',
+           zerolinewidth = 2,
+           gridcolor = 'ffff'))
+
+fig1
+
+```
+
+```{r}
+
+# Calculate the sum of GDP for each country
+sum1 <- aggregate(GDP ~ countrycode, data = final_data, FUN = sum)
+
+# Sort the data by the sum of Tax in descending order
+top_7_coun <- head(sum1[order(-sum1$GDP), ], 7)
+
+# Convert countrycode to factor to ensure the x-axis is discrete for the bar chart
+top_7_coun$countrycode <- factor(top_7_coun$countrycode)
+
+# Plot the data using plotly
+fig1 <- plot_ly(data = top_7_coun, x = ~countrycode, y = ~GDP,
+                text = ~GDP, textfont = list(color = 'rgb(101, 67, 33)'), textposition = 'inside', 
+                type = "bar", marker = list(color = 'rgb(225, 253, 208)', 
+                                            line = list(color = 'rgb(101, 67, 33)', 
+                                                        width = 2))) %>%
+   layout(title = "<b>Aggregated GDP  by Countries</b>",
+         plot_bgcolor = 'white',
+         xaxis = list(title = "<b>Countries</b>",
+           zerolinecolor = 'ffff',
+           zerolinewidth = 2,
+           gridcolor = 'ffff'),
+         yaxis = list(title = "<b>Agg.Tax</b>",
+           zerolinecolor = '#CD6600',
+           zerolinewidth = 2,
+           gridcolor = 'ffff'))
+
+fig1
+```
+
+## Scattered Plot
+```{r}
+# Load required library
+library(plotly)
+
+# Scatter plot for GDP vs Inf
+fig_1 <- plot_ly(
+  data = final_data, # Specify the data source
+  x = ~final_data$`GDP`, # Set the X-axis data from the "GDP" column
+  y = ~final_data$`Inf`, # Set the Y-axis data from the "Inf" (Inflation) column
+  marker = list(
+    size = 5, # Set the size of the markers
+    color = "turquoise", # Set the color of the markers
+    line = list(color = "gray0", width = 2) # Set the color and width of the marker borders
+  )
+)
+fig_1 <- fig_1 %>% layout(
+  title = "Change in GDP vs. Inflation", # Set the plot title
+  yaxis = list(zeroline = FALSE, title = "Inflation (% change)"), # Customize the Y-axis properties
+  xaxis = list(zeroline = FALSE, title = "GDP (% change)") # Customize the X-axis properties
+)
+fig_1 # Display the scatter plot
+
+# Scatter plot for GDP vs Unem
+fig_2 <- plot_ly(
+  data = final_data, # Specify the data source
+  x = ~final_data$`GDP`, # Set the X-axis data from the "GDP" column
+  y = ~final_data$`Unem`, # Set the Y-axis data from the "Unem" (Unemployment) column
+  marker = list(
+    size = 5, # Set the size of the markers
+    color = "blue", # Set the color of the markers
+    line = list(color = "gray0", width = 2) # Set the color and width of the marker borders
+  )
+)
+fig_2 <- fig_2 %>% layout(
+  title = "Change in GDP vs. Unemployment", # Set the plot title
+  yaxis = list(zeroline = FALSE, title = "Unemployment (% change)"), # Customize the Y-axis properties
+  xaxis = list(zeroline = FALSE, title = "GDP (% change)") # Customize the X-axis properties
+)
+fig_2 # Display the scatter plot
+
+# Scatter plot for GDP vs Int
+fig_3 <- plot_ly(
+  data = final_data, # Specify the data source
+  x = ~final_data$`GDP`, # Set the X-axis data from the "GDP" column
+  y = ~final_data$`Int`, # Set the Y-axis data from the "Int" (Interest Rate) column
+  marker = list(
+    size = 5, # Set the size of the markers
+    color = "green", # Set the color of the markers
+    line = list(color = "gray0", width = 2) # Set the color and width of the marker borders
+  )
+)
+fig_3 <- fig_3 %>% layout(
+  title = "Change in GDP vs. Interest Rate", # Set the plot title
+  yaxis = list(zeroline = FALSE, title = "Interest Rate (% change)"), # Customize the Y-axis properties
+  xaxis = list(zeroline = FALSE, title = "GDP (% change)") # Customize the X-axis properties
+)
+fig_3 # Display the scatter plot
+
+# Scatter plot for GDP vs Tax
+fig_4 <- plot_ly(
+  data = final_data, # Specify the data source
+  x = ~final_data$`GDP`, # Set the X-axis data from the "GDP" column
+  y = ~final_data$`Tax`, # Set the Y-axis data from the "Tax" column
+  marker = list(
+    size = 5, # Set the size of the markers
+    color = "red", # Set the color of the markers
+    line = list(color = "gray0", width = 2) # Set the color and width of the marker borders
+  )
+)
+fig_4 <- fig_4 %>% layout(
+  title = "Change in GDP vs. Tax", # Set the plot title
+  yaxis = list(zeroline = FALSE, title = "Tax (% change)"), # Customize the Y-axis properties
+  xaxis = list(zeroline = FALSE, title = "GDP (% change)") # Customize the X-axis properties
+)
+fig_4 # Display the scatter plot
+
+
+```
+
+
+### Line Graphs 
+```{r}
+library(plotly)
+
+# Line graph for Interest Rate by Country
+interest_rate_graph <- plot_ly(final_data, x = ~countrycode, y = ~Int, type = 'scatter', mode = 'lines+markers', 
+                               line = list(color = 'blue')) %>%
+  layout(title = "Interest Rate by Country",
+         xaxis = list(title = "Country"),
+         yaxis = list(title = "Interest Rate"),
+         showlegend = FALSE)
+
+interest_rate_graph
+
+
+```
+
+```{r}
+library(plotly)
+
+# Line graph for Tax by Country
+tax_graph <- plot_ly(final_data, x = ~countrycode, y = ~Tax, type = 'scatter', mode = 'lines+markers', 
+                     line = list(color = 'red')) %>%
+  layout(title = "Tax by Country",
+         xaxis = list(title = "Country"),
+         yaxis = list(title = "Tax"),
+         showlegend = FALSE)
+
+tax_graph
+
+# Line graph for Unem (Unemployment) by Country
+unem_graph <- plot_ly(final_data, x = ~countrycode, y = ~Unem, type = 'scatter', mode = 'lines+markers', 
+                      line = list(color = 'green')) %>%
+  layout(title = "Unemployment by Country",
+         xaxis = list(title = "Country"),
+         yaxis = list(title = "Unemployment Rate"),
+         showlegend = FALSE)
+
+unem_graph
+
+# Line graph for GDP by Country
+gdp_graph <- plot_ly(final_data, x = ~countrycode, y = ~GDP, type = 'scatter', mode = 'lines+markers', 
+                     line = list(color = 'purple')) %>%
+  layout(title = "GDP by Country",
+         xaxis = list(title = "Country"),
+         yaxis = list(title = "GDP"),
+         showlegend = FALSE)
+
+gdp_graph
+
+
+
+```
+
+
+
+```{r}
+library(plotly)
+
+# Trend line for Interest Rate (Int) by Year for different countries
+fig <- plot_ly(final_data, x = ~year, y = ~Int, color = ~countrycode, type = "scatter", mode = "lines+markers",
+               hoverinfo = 'text',
+               text = ~paste("Year: ", year, "<br>Country: ", countrycode, "<br>Interest Rate: ", round(Int, 2))) %>%
+  layout(showlegend = TRUE, xaxis = list(rangeslider = list(visible = TRUE)))
+
+fig <- fig %>% config(
+  scrollZoom = TRUE, editable = TRUE, selectdirection = "any", staticplot = FALSE
+)
+
+fig <- fig %>%
+  layout(title = "<b>Trend in Interest Rates over Time by Country</b>",
+         xaxis = list(title = "Year",
+                      zerolinecolor = 'white',
+                      zerolinewidth = 2.5,
+                      gridcolor = 'white'),
+         yaxis = list(title = "Interest Rate",
+                      zerolinecolor = 'white',
+                      zerolinewidth = 2.5,
+                      gridcolor = 'white'),
+         plot_bgcolor = 'lightblue', width = 950)
+
+# Display the chart
+fig
+colnames(data)
+
+```
+
+### Line Charts - Trendlines 
+```{r}
+fig_tax <- plot_ly(final_data, x = ~year, y = ~Tax, type = "scatter", mode = "lines+markers",
+                   color = ~countrycode, hoverinfo = 'text',
+                   text = ~paste("Year: ", year, "<br>Country: ", countrycode, "<br>Tax: ", round(Tax, 2))) %>%
+  layout(showlegend = TRUE, xaxis = list(rangeslider = list(visible = TRUE)))
+
+fig_tax <- fig_tax %>% config(
+  scrollZoom = TRUE, editable = TRUE, selectdirection = "any", staticplot = FALSE
+)
+
+fig_tax <- fig_tax %>%
+  layout(title = "<b>Trend in Tax over Time by Country</b>",
+         xaxis = list(title = "Year",
+                      zerolinecolor = 'white',
+                      zerolinewidth = 2.5,
+                      gridcolor = 'white'),
+         yaxis = list(title = "Tax",
+                      zerolinecolor = 'white',
+                      zerolinewidth = 2.5,
+                      gridcolor = 'white'),
+         plot_bgcolor = 'lightblue', width = 950)
+
+fig_tax
+
+
+
+
+```
+
+```{r}
+fig_gdp <- plot_ly(final_data, x = ~year, y = ~GDP, type = "scatter", mode = "lines+markers",
+                   color = ~countrycode, hoverinfo = 'text',
+                   text = ~paste("Year: ", year, "<br>Country: ", countrycode, "<br>GDP: ", round(GDP, 2))) %>%
+  layout(showlegend = TRUE, xaxis = list(rangeslider = list(visible = TRUE)))
+
+fig_gdp <- fig_gdp %>% config(
+  scrollZoom = TRUE, editable = TRUE, selectdirection = "any", staticplot = FALSE
+)
+
+fig_gdp <- fig_gdp %>%
+  layout(title = "<b>Trend in GDP per capital over Time by Country</b>",
+         xaxis = list(title = "Year",
+                      zerolinecolor = 'white',
+                      zerolinewidth = 2.5,
+                      gridcolor = 'white'),
+         yaxis = list(title = "GDP",
+                      zerolinecolor = 'white',
+                      zerolinewidth = 2.5,
+                      gridcolor = 'white'),
+         plot_bgcolor = 'lightblue', width = 950)
+
+fig_gdp
+
+```
+
+```{r}
+fig_unem <- plot_ly(final_data, x = ~year, y = ~Unem, type = "scatter", mode = "lines+markers",
+                    color = ~countrycode, hoverinfo = 'text',
+                    text = ~paste("Year: ", year, "<br>Country: ", countrycode, "<br>Unemployment: ", round(Unem, 2))) %>%
+  layout(showlegend = TRUE, xaxis = list(rangeslider = list(visible = TRUE)))
+
+fig_unem <- fig_unem %>% config(
+  scrollZoom = TRUE, editable = TRUE, selectdirection = "any", staticplot = FALSE
+)
+
+fig_unem <- fig_unem %>%
+  layout(title = "<b>Trend in Unemployment over Time by Country</b>",
+         xaxis = list(title = "Year",
+                      zerolinecolor = 'white',
+                      zerolinewidth = 2.5,
+                      gridcolor = 'white'),
+         yaxis = list(title = "Unemployment Rate",
+                      zerolinecolor = 'white',
+                      zerolinewidth = 2.5,
+                      gridcolor = 'white'),
+         plot_bgcolor = 'lightblue', width = 950)
+
+fig_unem
+
+```
+
+## Pie Chart
+
+```{r}
+# Load necessary libraries
+library(plotly)
+
+# Create a blank graph
+fig <- plot_ly()
+
+# Add pie chart for Interest Rate (Int)
+fig <- fig %>% add_pie(data = final_data, labels = ~countrycode, values = ~Int,
+                       name = "Interest Rate", domain = list(row = 0, column = 0),
+                       title = list(text = "Interest Rate"))
+
+# Add pie chart for GDP
+fig <- fig %>% add_pie(data = final_data, labels = ~countrycode, values = ~GDP,
+                       name = "GDP", domain = list(row = 0, column = 1),
+                       title = list(text = "GDP"))
+
+# Add pie chart for Tax
+fig <- fig %>% add_pie(data = final_data, labels = ~countrycode, values = ~Tax,
+                       name = "Tax", domain = list(row = 1, column = 0),
+                       title = list(text = "Tax"))
+
+# Add pie chart for Unemployment (Unem)
+fig <- fig %>% add_pie(data = final_data, labels = ~countrycode, values = ~Unem,
+                       name = "Unemployment", domain = list(row = 1, column = 1),
+                       title = list(text = "Unemployment"))
+
+# Customize layout of the subplots
+fig <- fig %>% layout(title = "Pie Charts with Subplots for Various Variables", showlegend = TRUE,
+                      grid = list(rows = 2, columns = 2),
+                      xaxis = list(showgrid = FALSE, zeroline = TRUE, showticklabels = TRUE),
+                      yaxis = list(showgrid = FALSE, zeroline = TRUE, showticklabels = TRUE))
+
+# Display the pie chart
+fig
+
+```
+
+## Histogram
+
+```{r}
+# Load necessary libraries
+library(plotly)
+
+# Create a new plotly object with an alpha (transparency) value set to 0.6
+fig <- plot_ly(alpha = 0.6)
+
+# Add histograms for each variable
+fig <- fig %>% add_histogram(x = final_data$Int, name = "Interest Rate")
+fig <- fig %>% add_histogram(x = final_data$GDP, name = "GDP")
+fig <- fig %>% add_histogram(x = final_data$Tax, name = "Tax")
+fig <- fig %>% add_histogram(x = final_data$Unem, name = "Unemployment")
+
+# Set the layout of the plotly object with "barmode" as "overlay" to overlay the histograms
+fig <- fig %>% layout(barmode = "overlay",
+                      title = "Overlayed Histograms for Various Variables",
+                      xaxis = list(title = "Values"),
+                      yaxis = list(title = "Frequency"))
+
+# Display the overlaid histogram
+fig
+
+```
+
+## Error Bars
+```{r}
+# Load necessary libraries
+library(plyr)
+library(plotly)
+
+# Define new variables
+x <- final_data$Unem   # Unemployment
+y <- final_data$countrycode   # Country code
+z <- final_data$Tax   # Tax
+
+# Create a new dataset with x, y, and z variables
+new_data <- data.frame(x, y, z)
+
+# Calculate the mean output (Tax) for each combination of 'Unem' and 'countrycode'
+data_4_mean <- ddply(new_data, c("y", "x"), summarise, Output = mean(z, na.rm = TRUE))
+
+# Calculate the standard deviation of output (Tax) for each combination of 'Unem' and 'countrycode'
+data_sd <- ddply(new_data, c("y", "x"), summarise, Output = sd(z, na.rm = TRUE))
+
+# Combine the mean and standard deviation data into a new dataframe
+dta_4 <- data.frame(data_4_mean, data_sd$Output)
+
+# Rename the 'data_sd.Output' column to 'sd' for clarity
+dta_4 <- rename(dta_4, c("data_sd.Output" = "sd"))
+
+# Convert the 'x' column (Unemployment) to a factor for better plotting
+dta_4$x <- as.factor(dta_4$x)
+
+# Create a grouped bar plot using Plotly
+fig <- plot_ly(data = dta_4[which(dta_4$y == "HND"),], x = ~x, y = ~Output, type = "bar", name = "HND",
+               error_y = ~list(array = sd, color = "black"))
+fig <- fig %>% add_trace(data = dta_4[which(dta_4$y == "DOM"),], name = "DOM")
+fig <- fig %>% add_trace(data = dta_4[which(dta_4$y == "CRI"),], name = "CRI")
+fig <- fig %>% add_trace(data = dta_4[which(dta_4$y == "PAN"),], name = "PAN")
+fig <- fig %>% add_trace(data = dta_4[which(dta_4$y == "CAN"),], name = "CAN")
+fig <- fig %>% add_trace(data = dta_4[which(dta_4$y == "MEX"),], name = "MEX")
+fig <- fig %>% add_trace(data = dta_4[which(dta_4$y == "USA"),], name = "USA")
+
+# Customize layout
+fig <- fig %>% layout(title = "Mean Tax by Unemployment and Country with Standard Deviation",
+                      xaxis = list(title = "Unemployment"),
+                      yaxis = list(title = "Mean Tax"),
+                      barmode = "group")
+
+# Display the grouped bar plot
+fig
+
+```
+
+## Violin Plots
+```{r}
+###violin plots
+
+# Load necessary library
+library(plotly)
+
+# Create individual violin plots for each variable with year on the x-axis
+fig_int <- plot_ly(final_data, x = ~year, y = ~Int, name = 'Interest Rate', type = 'violin',
+                   box = list(visible = TRUE), meanline = list(visible = TRUE))
+
+fig_gdp <- plot_ly(final_data, x = ~year, y = ~GDP, name = 'GDP', type = 'violin',
+                   box = list(visible = TRUE), meanline = list(visible = TRUE))
+
+fig_tax <- plot_ly(final_data, x = ~year, y = ~Tax, name = 'Tax', type = 'violin',
+                   box = list(visible = TRUE), meanline = list(visible = TRUE))
+
+fig_unem <- plot_ly(final_data, x = ~year, y = ~Unem, name = 'Unemployment', type = 'violin',
+                    box = list(visible = TRUE), meanline = list(visible = TRUE))
+
+# Combine the violin plots into a single subplot layout
+fig <- subplot(fig_int, fig_gdp, fig_tax, fig_unem, nrows = 2, shareX = TRUE, shareY = TRUE)
+
+# Customize the layout of the subplots
+fig <- fig %>% layout(
+  title = "Violin Plots for Various Metrics by Year",
+  xaxis = list(
+    title = "Year"
+  ),
+  yaxis = list(
+    title = "Values",
+    zeroline = FALSE
+  )
+)
+
+# Display the subplot
+fig
+
+
+```
+
+## contour Plot
+```{r}
+# Define x and y variables
+x <- final_data$GDP  # GDP as the x variable
+y <- final_data$Unem # Unemployment as the y variable
+
+# Create a 2D density contour plot using plot_ly with x and y
+fig <- plot_ly(x = x, y = y, type = "histogram2dcontour")
+
+# Set layout options for the plot
+layout_options <- list(
+  showlegend = TRUE,
+  margin = list(l = 80, r = 50, b = 50, t = 50),
+  xaxis = list(title = "GDP"),
+  yaxis = list(title = "Unemployment"),
+  title = list(text = "2D Density Contour Plot of GDP vs. Unemployment")
+)
+
+# Update the layout options for the plot
+fig <- fig %>% layout(layout_options)
+
+# Display the plot
+fig
+
+```
+
+```{r}
+# Define x and y variables for Unemployment and Tax
+x <- final_data$Unem  # Unemployment as the x variable
+y <- final_data$Tax   # Tax as the y variable
+
+# Create a 2D density contour plot using plot_ly with x and y
+fig_unem_tax <- plot_ly(x = x, y = y, type = "histogram2dcontour")
+
+# Set layout options for the plot
+layout_options_unem_tax <- list(
+  showlegend = FALSE,
+  margin = list(l = 80, r = 50, b = 50, t = 50),
+  xaxis = list(title = "Unemployment"),
+  yaxis = list(title = "Tax"),
+  title = list(text = "2D Density Contour Plot of Unemployment vs. Tax")
+)
+
+# Update the layout options for the plot
+fig_unem_tax <- fig_unem_tax %>% layout(layout_options_unem_tax)
+
+# Display the plot
+fig_unem_tax
+
+```
+
+```{r}
+# Define x and y variables for Unemployment and Interest Rate
+x <- final_data$Unem  # Unemployment as the x variable
+y <- final_data$Int   # Interest Rate as the y variable
+
+# Create a 2D density contour plot using plot_ly with x and y
+fig_unem_int <- plot_ly(x = x, y = y, type = "histogram2dcontour")
+
+# Set layout options for the plot
+layout_options_unem_int <- list(
+  showlegend = FALSE,
+  margin = list(l = 80, r = 50, b = 50, t = 50),
+  xaxis = list(title = "Unemployment"),
+  yaxis = list(title = "Interest Rate"),
+  title = list(text = "2D Density Contour Plot of Unemployment vs. Interest Rate")
+)
+
+# Update the layout options for the plot
+fig_unem_int <- fig_unem_int %>% layout(layout_options_unem_int)
+
+# Display the plot
+fig_unem_int
+
+```
+
+## Heatmap
+```{r}
+# Load necessary library
+library(plotly)
+
+# Subset the data to include only the relevant columns
+data_subset <- final_data[, c("Int", "GDP", "Tax", "Unem", "Inf")]
+
+# Calculate the correlation matrix
+cor_matrix <- cor(data_subset, use = "complete.obs")  # use = "complete.obs" to handle NA values
+
+# Create the heatmap
+fig <- plot_ly(
+  z = cor_matrix,
+  type = "heatmap",
+  colorscale = "Viridis",   # You can choose a different colorscale if desired
+  x = colnames(cor_matrix),
+  y = colnames(cor_matrix),
+  text = round(cor_matrix, 2),
+  hoverinfo = "text"
+)
+
+fig <- fig %>% config(
+  scrollZoom = TRUE, editable = TRUE, selectdirection = "any", staticplot = FALSE
+)
+
+# Set axis labels and title
+fig <- fig %>% layout(
+  xaxis = list(title = "Variables"),
+  yaxis = list(title = "Variables"),
+  title = "Correlation Heatmap: Economic Indicators"
+)
+
+# Display the heatmap
+fig
+
+```
+
+## Bubble Chart
+
+```{r}
+# Load necessary library
+library(plotly)
+
+# Filter the dataset to include only relevant columns for GDP, Unemployment, and Interest Rate
+fuel1 <- final_data %>% select(GDP, Unem, Int)
+
+# Create bubble chart
+fig <- plot_ly(fuel1, x = ~GDP, y = ~Unem, type = "scatter", mode = "markers",
+               color = I('blue'), size = ~Int,
+               marker = list(sizes = c(5, 20), sizemode = "area", opacity = 0.5),
+               text = ~paste("Interest Rate: ", Int),
+               hoverinfo = "text") %>%
+  layout(title = "GDP vs. Unemployment (Bubble Chart)",
+         xaxis = list(title = "GDP"),
+         yaxis = list(title = "Unemployment"))
+
+# Add interactive features
+fig <- fig %>% config(
+  # Enable zooming functionality
+  scrollZoom = TRUE,
+  # Enable panning functionality
+  editable = TRUE,
+  # Enable data selection (filtering) by clicking and dragging on the plot
+  selectdirection = "any",
+  # Enable data selection (filtering) by holding down the shift key and clicking on the plot
+  staticplot = FALSE
+)
+
+# Display the interactive plot
+fig
+
+```
+
